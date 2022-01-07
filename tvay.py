@@ -1,0 +1,119 @@
+from Othello import *
+
+class tvay(Player):
+    def __init__(self, timeLimit):
+        Player.__init__(self, timeLimit)
+
+        self._nodeCount = 0
+        self._parentCount = 0
+        self._childCount = 0
+        self._depthCount = 0
+        self._count = 0
+        self._bestMoveList=[]
+
+    def moveOrder(self,state):
+        self._bestMoveList.sort()
+        self.setMove(self._bestMoveList[0])
+        self._bestMoveList.remove(self._bestMoveList[0])
+
+    def findMove(self, state):
+        self._count += 1
+        actions = state.actions()
+        depth = 1
+        while self.timeRemaining():
+            self._depthCount += 1
+            self._parentCount += 1
+            self._nodeCount += 1
+            print('Search depth', depth)
+            if state._turn % 2 == 0:
+                best = -10000
+                for a in actions: #for a in sel
+                    if not self.timeRemaining(): return
+                    result = state.result(a)
+                    v = self.value(result, depth-1, best, 10000)
+                    self._bestMoveList.append((v,a))
+                        #print(v)
+                    if v is None: return
+                    if v > best:
+                        best = v
+                        bestMove = a
+                #print(self._bestMoveList)
+                #self._bestMoveList.sort()
+
+            else:
+                best = 10000
+                for a in actions:
+                    if not self.timeRemaining(): return
+                    result = state.result(a)
+                    v = self.value(result, depth-1, -10000, best)
+                    #print(v)
+                    if v is None: return
+                    if v < best:
+                        best = v
+                        bestMove = a
+            self.setMove(bestMove)
+            print('\tBest value', best, state.moveToStr(bestMove))
+
+            depth += 1
+
+            if abs(best) == 1000:
+                break
+
+    def value(self, state, depth, alpha, beta):
+        self._nodeCount += 1
+        self._childCount += 1
+
+        actions = state.actions()
+        if state.gameOver():
+            w = state.winner()
+            if w == 0:
+                return 1000
+            if w == 1:
+                return -1000
+            return 0
+
+        if depth == 0:
+            return self.heuristic(state)
+
+        self._parentCount += 1
+
+        if state._turn % 2 == 0:
+            best = -10000
+            for a in actions:
+                if not self.timeRemaining(): return None
+                result = state.result(a)
+                v = self.value(result, depth-1, alpha, beta)
+                if v is None: return None
+                if v > best:
+                    best = v
+                if v > alpha:
+                    alpha = v
+                    if alpha >= beta:
+                        return best
+
+        else:
+            best = 10000
+            for a in actions:
+                if not self.timeRemaining(): return None
+                result = state.result(a)
+                v = self.value(result, depth-1, alpha, beta)
+                if v is None: return None
+                if v < best:
+                    best = v
+                if v < beta:
+                    beta = v
+                    if alpha >= beta:
+                        return best
+
+        return best
+
+    def heuristic(self, state):
+        ans=1*(state.mobility(0)-state.mobility(1))
+        ans+=4*(state.corner(0)-state.corner(1))
+        ans+=3*(state.stable(0)-state.stable(1))
+        #ans+=1*(state.frontier(0)-state.frontier(1))
+        return ans
+
+    def stats(self):
+        print(f'Average depth: {self._depthCount/self._count}')
+        print(f'Branching factor: {self._childCount / self._parentCount}')
